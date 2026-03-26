@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta name="referrer" content="no-referrer">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小学看图说话训练营</title>
+    <style>
+        :root { --main: #6c5ce7; --bg: #f7f9fc; --text: #2d3436; }
+        body { font-family: 'PingFang SC', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; }
+        
+        /* 导航头部 */
+        .header { background: white; padding: 20px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
+        .header h1 { margin: 0; font-size: 20px; color: var(--main); cursor: pointer; }
+
+        /* 首页：题目序号列表 */
+        #home-page { padding: 20px; max-width: 600px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; }
+        .num-card { background: white; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-weight: bold; font-size: 18px; color: var(--main); box-shadow: 0 4px 6px rgba(0,0,0,0.05); cursor: pointer; border: 2px solid transparent; transition: 0.3s; }
+        .num-card:hover { border-color: var(--main); transform: translateY(-3px); }
+
+        /* 详情页：单题显示 */
+        #detail-page { display: none; padding: 15px; max-width: 700px; margin: 0 auto; }
+        .back-btn { display: inline-block; margin-bottom: 15px; color: var(--main); font-weight: bold; cursor: pointer; }
+        
+        .card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.08); }
+        .img-box { width: 100%; max-height: 450px; background: #eee; cursor: zoom-in; position: relative; }
+        .img-box img { width: 100%; height: auto; display: block; }
+        .img-tip { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.5); color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+
+        .content { padding: 20px; }
+        .hint-box { background: #fff9db; border-left: 5px solid #fbc531; padding: 12px; border-radius: 8px; margin-bottom: 20px; }
+        .action-btn { background: var(--main); color: white; border: none; width: 100%; padding: 15px; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .answer-box { display: none; margin-top: 20px; padding: 18px; background: #f1f2f6; border-radius: 12px; border: 2px dashed #ced4da; line-height: 1.8; text-indent: 2em; }
+
+        /* 原图弹窗效果 */
+        #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; cursor: zoom-out; }
+        #overlay img { max-width: 95%; max-height: 95%; border-radius: 5px; }
+
+        @media (max-width: 450px) { #home-page { grid-template-columns: repeat(4, 1fr); } }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1 onclick="showHome()">🏠 小学看图说话训练营</h1>
+</div>
+
+<div id="home-page">
+    </div>
+
+<div id="detail-page">
+    <div class="back-btn" onclick="showHome()">← 返回列表</div>
+    <div id="quiz-content"></div>
+</div>
+
+<div id="overlay" onclick="closeOverlay()">
+    <img id="overlay-img" src="">
+</div>
+
+<script>
+const quizData = [
+    { id: 1, title: "助人为乐", hint: "下雨了，小明在校门口看见了谁？他是怎么做的？老奶奶心情如何？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/1.jpg", ans: "放学时下起了大雨。小明看见一位老奶奶没带伞，正站在路边发愁。小明连忙跑过去，把伞撑在老奶奶头顶，送她回家。老奶奶夸小明是个好孩子。" },
+    { id: 2, title: "爱护环境", hint: "小红在公园看见了什么垃圾？她把垃圾扔到了哪里？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/2.jpg", ans: "阳光明媚的周末，小红在公园玩。她看见绿油油的草地上有一个空瓶子。她弯下腰捡起瓶子，扔进了垃圾桶。草地变得更整洁了。" },
+    { id: 3, title: "勤劳劳动", hint: "春天到了，谁在种树？他们是怎么分工合作的？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/3.jpg", ans: "春天到了，小明和芳芳去公园种树。小明扶着树苗，芳芳用力地培土。他们干得满头大汗，希望小树快快长大。" },
+    { id: 4, title: "等候红灯", hint: "马路边亮着什么灯？小朋友们是怎么做的？为什么要这样做？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/4.jpg", ans: "红灯停，绿灯行。过马路要走斑马线。小红和小强站在路边，静静地等待绿灯亮起。遵守交通规则，安全第一。" },
+    { id: 5, title: "课间活动", hint: "操场上有哪些运动项目？小朋友们玩得开心吗？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/5.jpg", ans: "下课铃响了，操场上真热闹。同学们有的在跳绳，有的在踢足球。大家的欢笑声传遍了整个校园。" },
+    { id: 6, title: "帮妈干活", hint: "小刚在哪里做什么？妈妈对他说了什么？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/6.jpg", ans: "今天是星期六，妈妈在做饭。小刚主动跑进厨房帮忙。他认真地清洗青菜。妈妈开心地笑了，夸他是家里的“小帮手”。" },
+    { id: 7, title: "爱护动物", hint: "小明在喂谁？它的样子可爱吗？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/7.jpg", ans: "小鸟是人类的朋友。小明每天都会给阳台上的小鸟喂食、换水。小鸟欢快地唱着歌，好像在说：“谢谢你！”" },
+    { id: 8, title: "认真学习", hint: "什么时候了？小红在做什么？她的姿势正确吗？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/8.jpg", ans: "夜深了，小红还在台灯下认真地写作业。她坐姿端正，字迹工整。这种刻刻苦学习的精神真值得我们学习。" },
+    { id: 9, title: "分享西瓜", hint: "夏天到了，小军请谁吃西瓜？他们的表情是怎样的？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/9.jpg", ans: "夏天到了，天气很热。小军把家里的大西瓜切开，请小伙伴玲玲一起吃。大家吃着甜甜的西瓜，心里美滋滋的。" },
+    { id: 10, title: "雪地玩耍", hint: "冬天到了，大地变成了什么颜色？小朋友堆的雪人长什么样？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/10.jpg", ans: "下雪啦！大地披上了银装。小朋友们在雪地上堆了一个大雪人。他们给雪人戴上红帽子，围上绿围巾，玩得真开心。" },
+    { id: 11, title: "勤洗手", hint: "小男孩在用什么洗手？洗手有什么好处？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/11.jpg", ans: "饭前洗手是个好习惯。明明打开水龙头，用肥皂仔细地搓出泡泡。把手洗得干干净净，身体才会棒棒的。" },
+    { id: 12, title: "放风筝", hint: "天空中有几个风筝？小明跑得快吗？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/12.jpg", ans: "春风吹，燕子归。明明在草地上飞快地奔跑，手中的风筝越飞越高。蓝蓝的天空变得更加美丽了。" },
+    { id: 13, title: "图书馆", hint: "图书馆里的气氛怎么样？大家在看什么书？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/13.jpg", ans: "图书馆里真安静。小朋友们坐在椅子上，正聚精会神地看书。大家都在知识的海洋里快乐地游玩。" },
+    { id: 14, title: "早锻炼", hint: "太阳公公出来了吗？小强在做什么？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/14.jpg", ans: "晨跑身体好。天刚亮，小强就去公园跑步。他跑得满头大汗，感觉浑身充满了力量。" },
+    { id: 15, title: "给花浇水", hint: "阳台上的花是什么颜色的？小红拿着什么在浇水？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/15.jpg", ans: "阳台上的花儿开了。小红每天都会给它们浇水。喝饱了水的小花在阳光下笑得更灿烂了。" },
+    { id: 16, title: "公交让座", hint: "公交车上，谁上车了？小明是怎么做的？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/16.jpg", ans: "公交车上，一位阿姨抱着宝宝上车了。小明连忙站起来说：“阿姨，您坐这儿。”阿姨微笑着说了声谢谢。" },
+    { id: 17, title: "过生日", hint: "蛋糕上有几根蜡烛？小明在许什么愿？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/17.jpg", ans: "今天是我的生日。家里摆了漂亮的蛋糕。我闭上眼许了个愿，然后吹灭了蜡烛。大家都祝我生日快乐。" },
+    { id: 18, title: "秋天落叶", hint: "树叶是什么颜色的？小芳捡起叶子想做什么？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/18.jpg", ans: "秋天到了，枫叶变红了。小芳来到枫树下，捡起一片最红的叶子。她说要把这片叶子做成精美的书签。" },
+    { id: 19, title: "海边玩沙", hint: "沙滩上有什么？小男孩搭的是什么？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/19.jpg", ans: "暑假里，爸爸带我去海边。我在金色的沙滩上，用小桶和小铲子搭了一座宏伟的城堡。大海真美呀！" },
+    { id: 20, title: "升旗仪式", hint: "周一早晨，同学们在操场上做什么？他们的神情是怎样的？", img: "https://gitee.com/bepatientyg/kantushuohua/raw/master/PIC/20.jpg", ans: "每周一，我们要举行升旗仪式。同学们排着整齐的队，向冉冉升起的国旗敬礼。我们爱美丽的祖国。" }
+];
+
+// 初始化首页
+const homePage = document.getElementById('home-page');
+quizData.forEach((quiz, index) => {
+    const box = document.createElement('div');
+    box.className = 'num-card';
+    box.innerText = quiz.id;
+    box.onclick = () => showDetail(index);
+    homePage.appendChild(box);
+});
+
+// 显示详情页
+function showDetail(index) {
+    const quiz = quizData[index];
+    const detailPage = document.getElementById('detail-page');
+    const quizContent = document.getElementById('quiz-content');
+    
+    document.getElementById('home-page').style.display = 'none';
+    detailPage.style.display = 'block';
+    window.scrollTo(0, 0);
+
+    quizContent.innerHTML = `
+        <div class="card">
+            <div class="img-box" onclick="openOverlay('${quiz.img}')">
+                <img src="${quiz.img}" alt="${quiz.title}">
+                <div class="img-tip">🔍 点击查看原图</div>
+            </div>
+            <div class="content">
+                <h3 style="margin-top:0">《${quiz.title}》</h3>
+                <div class="hint-box">
+                    <div style="font-weight:bold; color:#856404; font-size:14px">💡 观察提示：</div>
+                    <div style="color:#666; font-size:15px">${quiz.hint}</div>
+                </div>
+                <button class="action-btn" id="ans-btn" onclick="toggleAns()">点击查看参考范文</button>
+                <div class="answer-box" id="ans-box">
+                    <span style="font-weight:bold; color:var(--main)">【参考范文】</span>
+                    <div style="margin-top:10px">${quiz.ans}</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// 返回首页
+function showHome() {
+    document.getElementById('home-page').style.display = 'grid';
+    document.getElementById('detail-page').style.display = 'none';
+}
+
+// 答案切换
+function toggleAns() {
+    const box = document.getElementById('ans-box');
+    const btn = document.getElementById('ans-btn');
+    if (box.style.display === 'block') {
+        box.style.display = 'none';
+        btn.innerText = '点击查看参考范文';
+        btn.style.background = '#6c5ce7';
+    } else {
+        box.style.display = 'block';
+        btn.innerText = '隐藏参考范文';
+        btn.style.background = '#a29bfe';
+    }
+}
+
+// 原图预览逻辑
+function openOverlay(src) {
+    document.getElementById('overlay-img').src = src;
+    document.getElementById('overlay').style.display = 'flex';
+}
+
+function closeOverlay() {
+    document.getElementById('overlay').style.display = 'none';
+}
+</script>
+
+</body>
+</html>
